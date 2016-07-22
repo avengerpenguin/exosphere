@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 from troposphere import Template, Ref, Output, Parameter, Join, GetAtt, FindInMap
@@ -8,11 +9,8 @@ import boto3
 import botocore
 
 
-def update():
-    import sys
-
+def update(domain):
     t = Template()
-
 
     t.add_mapping("RegionMap", {
         "us-east-1" : { "S3hostedzoneID" : "Z3AQBSTGFYJSTF", "websiteendpoint" : "s3-website-us-east-1.amazonaws.com" },
@@ -25,13 +23,11 @@ def update():
         "sa-east-1" : { "S3hostedzoneID" : "Z31GFT0UA1I2HV", "websiteendpoint" : "s3-website-sa-east-1.amazonaws.com" }
     })
 
-
     hostedzone = t.add_parameter(Parameter(
         "HostedZone",
         Description="The DNS name of an existing Amazon Route 53 hosted zone",
         Type="String",
     ))
-
 
     root_bucket = t.add_resource(
         Bucket("RootBucket",
@@ -75,10 +71,10 @@ def update():
         ]
     ))
 
-    domain = sys.argv[1]
     stack_name = domain.replace('.', '')
 
     client = boto3.client('cloudformation', region_name='eu-west-1')
+
     try:
         response = client.describe_stacks(
             StackName=stack_name,
@@ -96,7 +92,6 @@ def update():
         response = client.describe_stacks(
             StackName=stack_name,
         )
-
 
     try:
         client.update_stack(StackName=stack_name, TemplateBody=t.to_json(), Parameters=[

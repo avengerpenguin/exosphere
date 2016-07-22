@@ -1,7 +1,9 @@
 import pytest
 import httpretty
 import json
+import re
 from exosphere import stacks
+from urllib.parse import urlparse, parse_qs
 
 
 @pytest.fixture(autouse=True, scope='function')
@@ -14,14 +16,47 @@ def mock_responses(request):
         httpretty.enable()
         return response['code'], headers, response['body'].encode('utf-8')
 
+    def cloudformation(request, uri, headers):
+        q = parse_qs(request.querystring or request.body.decode('utf-8'))
+        print(q)
+        return (200, {}, {
+            'GET': {},
+            'POST': {
+                'DescribeStacks': """<DescribeStacksResponse xmlns="http://cloudformation.amazonaws.com/doc/2010-05-15/">
+  <DescribeStacksResult>
+    <Stacks>
+      <member>
+        <StackName>MyStack</StackName>
+        <StackId>arn:aws:cloudformation:us-east-1:123456789:stack/MyStack/aaf549a0-a413-11df-adb3-5081b3858e83</StackId>
+        <CreationTime>2010-07-27T22:28:28Z</CreationTime>
+        <StackStatus>CREATE_COMPLETE</StackStatus>
+        <DisableRollback>false</DisableRollback>
+        <Outputs>
+          <member>
+            <OutputKey>StartPage</OutputKey>
+            <OutputValue>http://my-load-balancer.amazonaws.com:80/index.html</OutputValue>
+          </member>
+        </Outputs>
+      </member>
+    </Stacks>
+  </DescribeStacksResult>
+  <ResponseMetadata>
+    <RequestId>b9b4b068-3a41-11e5-94eb-example</RequestId>
+  </ResponseMetadata>
+</DescribeStacksResponse>""",
+            },
+        }[request.method][q.get('Action', ['default'])[0]])
+    
     httpretty.register_uri(
         httpretty.GET,
-        'http://search-distillery-hmgiipkkqvhkhxcrzfqsgzyrgq.eu-west-1.es.amazonaws.com/distillery-0-0/features-raw/_search?search_type=scan&scroll=5m',
-        body=json.dumps({
-            "_scroll_id": "c2Nhbjs1OzExOkRPVDZFdzIxUjJHYmdzNkJCMktZdlE7MTM6RUhlUWs1S3RSZXFyVVIzVnltWjUtZzs5OnN6QVhqekRzUkNhRnhwXzZJaHI5ZkE7MTI6RE9UNkV3MjFSMkdiZ3M2QkIyS1l2UTsxNDpFSGVRazVLdFJlcXJVUjNWeW1aNS1nOzE7dG90YWxfaGl0czoyNzE2Mjs=",
-            "took": 32, "timed_out": False, "_shards": {"total": 5, "successful": 5, "failed": 0},
-            "hits": {"total": 27162, "max_score": 0.0, "hits": []}
-        })
+        re.compile('https://cloudformation.eu-west-1.amazonaws.com.*'),
+        body=cloudformation,
+    )
+
+    httpretty.register_uri(
+        httpretty.POST,
+        re.compile('https://cloudformation.eu-west-1.amazonaws.com.*'),
+        body=cloudformation,
     )
 
     httpretty.enable()
@@ -30,4 +65,4 @@ def mock_responses(request):
 
 
 def test_create_stack():
-    stacks.get('static_site').update()
+    stacks.get('static_site').update('example.com')

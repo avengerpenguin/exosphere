@@ -1,4 +1,4 @@
-.PHONY: clean test accept rpm
+.PHONY: clean test accept rpm veryclean
 
 NAME := exosphere
 VERSION := $(shell python setup.py --version)
@@ -12,7 +12,7 @@ PYTEST := $(VENV)/bin/py.test
 PEP8 := $(VENV)/bin/pep8
 TOX := $(VENV)/bin/tox
 
-PYSRC := $(shell find {$(NAME),test} -iname '*.py')
+PYSRC := $(shell find $(NAME) -iname '*.py' ; find test -iname '*.py')
 TARGET := $(PWD)/target
 
 
@@ -23,7 +23,10 @@ TARGET := $(PWD)/target
 default: test
 
 clean:
-	rm -rf .tox htmlcov .coverage .eggs results node_modules $(TARGET)
+	rm -rf .tox htmlcov .coverage .eggs $(TARGET) *.egg *.egg-info
+
+veryclean:
+	rm -rf venv
 
 $(TARGET):
 	mkdir -p $(TARGET)
