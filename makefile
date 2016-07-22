@@ -1,6 +1,6 @@
 .PHONY: clean test accept rpm
 
-NAME := cumulus
+NAME := exosphere
 VERSION := $(shell python setup.py --version)
 BUILD_NUMBER ?= 1
 RELEASE_VER = $(BUILD_NUMBER)
