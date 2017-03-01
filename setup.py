@@ -27,11 +27,11 @@ class Tox(TestCommand):
 
 setup(
     name="exosphere",
-    version="0.0.0",
+    version="0.0.1",
     author='The Launch Ninja',
     author_email='exosphere@thelaunch.ninja',
     description='Pre-built, useful Cloudformation stacks and commands to work with them.',
-    url='http://github.com/bbc/exosphere',
+    url='http://github.com/TheLaunchNinja/exosphere',
     install_requires=['troposphere', 'boto3', 'clize'],
     packages=['exosphere', 'exosphere.stacks'],
     entry_points={
