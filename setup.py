@@ -27,7 +27,7 @@ class Tox(TestCommand):
 
 setup(
     name="exosphere",
-    version="0.0.1",
+    version="0.1.0",
     author='The Launch Ninja',
     author_email='exosphere@thelaunch.ninja',
     description='Pre-built, useful Cloudformation stacks and commands to work with them.',
