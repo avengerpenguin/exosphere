@@ -1,5 +1,9 @@
-from . import static_site
-import importlib
+from exosphere.stacks import static_site_with_email, static_site
 
 
-staticsite = static_site.update
+def staticsite(domain, region='eu-west-2'):
+    static_site.update(domain, region='eu-west-2')
+
+
+def staticsitewithemail(domain, from_address, forwarding_addresses, region='eu-west-2'):
+    static_site_with_email.update(domain, from_address, forwarding_addresses, region='eu-west-2')

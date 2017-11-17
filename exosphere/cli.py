@@ -7,7 +7,7 @@ def update(stack_type, *args):
 
 
 def main():
-    clize.run([stacks.staticsite])
+    clize.run([stacks.staticsite, stacks.staticsitewithemail])
 
 
 if __name__ == '__main__':
