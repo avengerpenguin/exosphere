@@ -2,17 +2,19 @@ from __future__ import print_function
 import sys
 
 from troposphere import Template, Ref, Output, Parameter, Join, GetAtt, FindInMap
-from troposphere.route53 import RecordSetType, RecordSet, RecordSetGroup, AliasTarget
+from troposphere.route53 import RecordSetType, RecordSet, RecordSetGroup, AliasTarget, HostedZone
 from troposphere.s3 import Bucket, PublicRead, BucketOwnerFullControl, WebsiteConfiguration, RedirectAllRequestsTo
 
 import boto3
 import botocore
 
 
-def update(domain, region='eu-west-2'):
-    t = make()
+def update(domain, region='eu-west-2', subdomain=None):
+    t = make(subdomain=subdomain)
 
     stack_name = domain.replace('.', '')
+    if subdomain:
+        stack_name = subdomain + stack_name
 
     client = boto3.client('cloudformation', region_name=region)
 
@@ -25,8 +27,11 @@ def update(domain, region='eu-west-2'):
             StackName=stack_name,
             TemplateBody=t.to_json(),
             Parameters=[
-                {'ParameterKey': 'HostedZone', 'ParameterValue': domain},
+                {'ParameterKey': 'HostedZoneName', 'ParameterValue': domain},
             ],
+            Capabilities=[
+                'CAPABILITY_IAM',
+            ]
         )
         waiter = client.get_waiter('stack_create_complete')
         waiter.wait(StackName=stack_name)
@@ -36,7 +41,9 @@ def update(domain, region='eu-west-2'):
 
     try:
         client.update_stack(StackName=stack_name, TemplateBody=t.to_json(), Parameters=[
-            {'ParameterKey': 'HostedZone', 'ParameterValue': domain},
+            {'ParameterKey': 'HostedZoneName', 'ParameterValue': domain},
+        ], Capabilities=[
+            'CAPABILITY_IAM',
         ])
         waiter = client.get_waiter('stack_update_complete')
         waiter.wait(StackName=stack_name)
@@ -48,7 +55,7 @@ def update(domain, region='eu-west-2'):
         pass
 
 
-def make():
+def make(subdomain=None):
     t = Template()
     t.add_mapping("RegionMap", {
         "us-east-1": {"S3hostedzoneID": "Z3AQBSTGFYJSTF",
@@ -71,51 +78,86 @@ def make():
                       "websiteendpoint": "s3-website-sa-east-1.amazonaws.com"}
     })
     hostedzone = t.add_parameter(Parameter(
-        "HostedZone",
+        "HostedZoneName",
         Description="The DNS name of an existing Amazon Route 53 hosted zone",
         Type="String",
     ))
-    root_bucket = t.add_resource(
-        Bucket("RootBucket",
-               BucketName=Ref(hostedzone),
-               AccessControl=PublicRead,
-               WebsiteConfiguration=WebsiteConfiguration(
-                   IndexDocument="index.html",
-               )
-               ))
-    www_bucket = t.add_resource(
-        Bucket("WWWBucket",
-               BucketName=Join('.', ['www', Ref(hostedzone)]),
-               AccessControl=PublicRead,
-               WebsiteConfiguration=WebsiteConfiguration(
-                   RedirectAllRequestsTo=RedirectAllRequestsTo(
-                       HostName=Ref(root_bucket)
+
+    if subdomain:
+        t.add_resource(
+            Bucket("Bucket",
+                   BucketName=Join('.', [subdomain, Ref(hostedzone)]),
+                   AccessControl=PublicRead,
+                   WebsiteConfiguration=WebsiteConfiguration(
+                       IndexDocument="index.html",
+                       ErrorDocument="error.html",
                    )
-               )))
-    record = t.add_resource(RecordSetGroup(
-        'RecordSetGroup',
-        HostedZoneName=Join("", [Ref(hostedzone), "."]),
-        RecordSets=[
-            RecordSet(
-                Name=Ref(hostedzone),
-                Type='A',
-                AliasTarget=AliasTarget(
-                    hostedzoneid=FindInMap('RegionMap', Ref('AWS::Region'),
-                                           'S3hostedzoneID'),
-                    dnsname=FindInMap('RegionMap', Ref('AWS::Region'),
-                                      'websiteendpoint'),
-                )
-            ),
-            RecordSet(
-                Name=Join('.', ['www', Ref(hostedzone)]),
-                Type='CNAME',
-                TTL='900',
-                ResourceRecords=[
-                    Join('.', ['www', Ref(hostedzone),
-                               FindInMap('RegionMap', Ref('AWS::Region'),
-                                         'websiteendpoint')])
-                ]
-            ),
-        ]
-    ))
+               ))
+
+        record = t.add_resource(RecordSetGroup(
+            'RecordSetGroup',
+            HostedZoneName=Join("", [Ref(hostedzone), "."]),
+            RecordSets=[
+                RecordSet(
+                    Name=Join('.', [subdomain, Ref(hostedzone)]),
+                    Type='A',
+                    AliasTarget=AliasTarget(
+                        hostedzoneid=FindInMap('RegionMap', Ref('AWS::Region'),
+                                               'S3hostedzoneID'),
+                        dnsname=FindInMap('RegionMap', Ref('AWS::Region'),
+                                          'websiteendpoint'),
+                    )
+                ),
+            ]
+        ))
+    else:
+        t.add_resource(HostedZone(
+            'HostedZone',
+            Name=Ref(hostedzone)
+        ))
+        root_bucket = t.add_resource(
+            Bucket("RootBucket",
+                   BucketName=Ref(hostedzone),
+                   AccessControl=PublicRead,
+                   WebsiteConfiguration=WebsiteConfiguration(
+                       IndexDocument="index.html",
+                       ErrorDocument="error.html",
+                   )
+                   ))
+        www_bucket = t.add_resource(
+            Bucket("WWWBucket",
+                   BucketName=Join('.', ['www', Ref(hostedzone)]),
+                   AccessControl=PublicRead,
+                   WebsiteConfiguration=WebsiteConfiguration(
+                       RedirectAllRequestsTo=RedirectAllRequestsTo(
+                           HostName=Ref(root_bucket)
+                       )
+                   )))
+
+        record = t.add_resource(RecordSetGroup(
+            'RecordSetGroup',
+            HostedZoneName=Join("", [Ref(hostedzone), "."]),
+            RecordSets=[
+                RecordSet(
+                    Name=Ref(hostedzone),
+                    Type='A',
+                    AliasTarget=AliasTarget(
+                        hostedzoneid=FindInMap('RegionMap', Ref('AWS::Region'),
+                                               'S3hostedzoneID'),
+                        dnsname=FindInMap('RegionMap', Ref('AWS::Region'),
+                                          'websiteendpoint'),
+                    )
+                ),
+                RecordSet(
+                    Name=Join('.', ['www', Ref(hostedzone)]),
+                    Type='CNAME',
+                    TTL='900',
+                    ResourceRecords=[
+                        Join('.', ['www', Ref(hostedzone),
+                                   FindInMap('RegionMap', Ref('AWS::Region'),
+                                             'websiteendpoint')])
+                    ]
+                ),
+            ]
+        ))
     return t

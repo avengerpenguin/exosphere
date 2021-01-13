@@ -35,85 +35,72 @@ def make():
         ),
         Code=awslambda.Code(
             ZipFile=r'''# coding: utf-8
-    import boto3
-    import email
-    import json
-    import logging
-    import os
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+import boto3
+import email
+import json
+import logging
+import os
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
-    def handler(event, context):
-        logger.info("Collecting event record data...")
-        record = event["Records"][0]
-        try:
-            logger.info("Looking for SES event...")
-            bucket_name =  record["s3"]["bucket"]["arn"]
-            message_id =  record["s3"]["object"]["key"]
-        except KeyError:
-            logger.critical("There was a problem retrieving data "
-                            "from the event record, {}".format(record))
-            return("FAIL")
+def handler(event, context):
+    logger.info("Collecting event record data...")
+    record = event["Records"][0]
+    try:
+        logger.info("Looking for SES event...")
+        bucket_name =  record["s3"]["bucket"]["name"]
+        message_id =  record["s3"]["object"]["key"]
+    except KeyError:
+        logger.critical("There was a problem retrieving data "
+                        "from the event record, {}".format(record))
+        return("FAIL")
 
-        s3_client = boto3.client('s3')
-        logger.info("Fetching s3 object: {}/{}".format(bucket_name, message_id))
-        mail_object = s3_client.get_object(Bucket = bucket_name, Key = message_id)
-        logger.info("Decoding mail body...")
-        email_data = mail_object["Body"].read().decode('utf-8')
+    s3_client = boto3.client('s3')
+    logger.info("Fetching s3 object: {}/{}".format(bucket_name, message_id))
+    mail_object = s3_client.get_object(Bucket = bucket_name, Key = message_id)
+    logger.info("Decoding mail body...")
+    email_data = mail_object["Body"].read().decode('utf-8')
+    email_object = email.message_from_string(email_data)
 
-        # Get env variables
-        # We need to use a verified email address rather than relying on the source
-        logger.info("Retrieving environment settings...")
-        email_from = os.environ['FromAddress']
-        forwarding_addresses = [address.strip() for address in os.environ['ForwardingAddresses'].split(",")]
+    # Get env variables
+    # We need to use a verified email address rather than relying on the source
+    logger.info("Retrieving environment settings...")
+    email_from = os.environ['FromAddress']
+    forwarding_addresses = [address.strip() for address in os.environ['ForwardingAddresses'].split(",")]
 
-        email_object = email.message_from_string(email_data)
-        email_subject = email_object.get('Subject', 'Verification message for ACM')
-        logger.info("Parsing mail: {}".format(email_subject))
-        email_text=""
+    if 'From' in email_object:
+        email_object['X-Original-From'] = email_object['From']
+        del email_object['From']
 
-        for part in email_object.walk():
-            c_type = part.get_content_type()
-            c_disp = part.get('Content-Disposition')
-            if c_type == 'text/plain' and c_disp == None:
-                email_text = email_text + '\n' + part.get_payload()
-            else:
-                continue
-        logger.info("Connecting to SES client")
-        ses_client = boto3.client('ses', region_name='eu-west-1')
-        response = ses_client.send_email(
-            Source=email_object.get('To'),
-            ReplyToAddresses=[email_object.get('From')],
-            Destination={
-                'ToAddresses': forwarding_addresses
-            },
-            Message={
-                'Subject': {
-                    'Data': email_subject,
-                },
-                'Body': {
-                    'Text': {
-                        'Data': email_text,
-                    }
-                }
-            },
-            Tags=[
-                {
-                    'Name': 'string',
-                    'Value': 'string'
-                },
-            ],
-        )
-        logger.info("Sent verification email successfully to {}".format(','.join(forwarding_addresses)))
+    if 'Return-Path' in email_object:
+        email_object['X-Original-Return-Path'] = email_object['Return-Path']
+        del email_object['Return-Path']
 
-        return "CONTINUE"'''
+    email_object['From'] = email_from
+
+    logger.info("Connecting to SES client")
+    ses_client = boto3.client('ses', region_name='eu-west-1')
+    logger.debug('Destinations:' + '; '.join([
+            'To: ' + address for address in forwarding_addresses
+        ]))
+    logger.debug('Message: ' + email_object.as_string())
+    response = ses_client.send_raw_email(
+        Destinations=forwarding_addresses,
+        #Source=email_from,
+        RawMessage={
+            'Data': email_object.as_string()
+        },
+    )
+    logger.info("Sent verification email successfully to {}".format(','.join(forwarding_addresses)))
+
+    return "CONTINUE"'''
         )
     ))
 
     bucket = t.add_resource(s3.Bucket(
         'SESACMS3Bucket',
         DependsOn='InvokePermission',
-        BucketName=Join('.', ['mail', Ref('HostedZone')]),
+        BucketName=Join('.', ['mail', Ref('HostedZoneName')]),
         LifecycleConfiguration=s3.LifecycleConfiguration(
             Rules=[
                 s3.LifecycleRule(ExpirationInDays=3, Status='Enabled')
@@ -135,7 +122,7 @@ def make():
         FunctionName=GetAtt(function, 'Arn'),
         Principal='s3.amazonaws.com',
         SourceAccount=Ref('AWS::AccountId'),
-        SourceArn=Join('', ['arn:aws:s3:::', Join('.', ['mail', Ref('HostedZone')])]),
+        SourceArn=Join('', ['arn:aws:s3:::', Join('.', ['mail', Ref('HostedZoneName')])]),
     ))
 
     t.add_resource(s3.BucketPolicy(
@@ -212,7 +199,7 @@ def make():
                         Action=[
                             aws.Action('s3', action='GetObject'),
                         ],
-                        Resource=[Join('', ['arn:aws:s3:::', Join('.', ['mail', Ref('HostedZone')]), Ref('AWS::StackName'), '/*'])],
+                        Resource=[Join('', ['arn:aws:s3:::', Join('.', ['mail', Ref('HostedZoneName')]), '/*'])],
                     )]
                 ),
             ),
@@ -253,10 +240,13 @@ def update(domain, from_address, forwarding_addresses, region='eu-west-2'):
             StackName=stack_name,
             TemplateBody=t.to_json(),
             Parameters=[
-                {'ParameterKey': 'HostedZone', 'ParameterValue': domain},
+                {'ParameterKey': 'HostedZoneName', 'ParameterValue': domain},
                 {'ParameterKey': 'FromAddress', 'ParameterValue': from_address},
                 {'ParameterKey': 'ForwardingAddresses', 'ParameterValue': forwarding_addresses},
             ],
+            Capabilities=[
+                'CAPABILITY_IAM',
+            ]
         )
         waiter = client.get_waiter('stack_create_complete')
         waiter.wait(StackName=stack_name)
@@ -269,7 +259,7 @@ def update(domain, from_address, forwarding_addresses, region='eu-west-2'):
             StackName=stack_name,
             TemplateBody=t.to_json(),
             Parameters=[
-                {'ParameterKey': 'HostedZone', 'ParameterValue': domain},
+                {'ParameterKey': 'HostedZoneName', 'ParameterValue': domain},
                 {'ParameterKey': 'FromAddress', 'ParameterValue': from_address},
                 {'ParameterKey': 'ForwardingAddresses', 'ParameterValue': forwarding_addresses},
             ],
