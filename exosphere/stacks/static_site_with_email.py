@@ -350,4 +350,3 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
         )
     except Exception as e:
         print(e, file=sys.stderr)
-        pass

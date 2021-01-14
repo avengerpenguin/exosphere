@@ -77,7 +77,6 @@ def update(domain, region="eu-west-2", subdomain=None):
         )
     except Exception as e:
         print(e, file=sys.stderr)
-        pass
 
 
 def make(subdomain=None):
