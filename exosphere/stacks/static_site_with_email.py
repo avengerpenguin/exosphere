@@ -83,7 +83,10 @@ def handler(event, context):
     # We need to use a verified email address rather than relying on the source
     logger.info("Retrieving environment settings...")
     email_from = os.environ['FromAddress']
-    forwarding_addresses = [address.strip() for address in os.environ['ForwardingAddresses'].split(",")]
+    forwarding_addresses = [
+        address.strip()
+        for address in os.environ['ForwardingAddresses'].split(",")
+    ]
 
     if 'From' in email_object:
         email_object['X-Original-From'] = email_object['From']
@@ -108,7 +111,11 @@ def handler(event, context):
             'Data': email_object.as_string()
         },
     )
-    logger.info("Sent verification email successfully to {}".format(','.join(forwarding_addresses)))
+    logger.info(
+        "Sent verification email successfully to {}".format(
+            ','.join(forwarding_addresses)
+        )
+    )
 
     return "CONTINUE"'''
             ),
@@ -287,7 +294,7 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
     client = boto3.client("cloudformation", region_name=region)
 
     try:
-        response = client.describe_stacks(StackName=stack_name)
+        client.describe_stacks(StackName=stack_name)
     except botocore.exceptions.ClientError:
         client.create_stack(
             StackName=stack_name,
@@ -307,7 +314,7 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
         )
         waiter = client.get_waiter("stack_create_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name)
+        client.describe_stacks(StackName=stack_name)
 
     try:
         client.update_stack(
@@ -328,6 +335,6 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
         )
         waiter = client.get_waiter("stack_update_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name)
+        client.describe_stacks(StackName=stack_name)
     except Exception as e:
         print(e, file=sys.stderr)

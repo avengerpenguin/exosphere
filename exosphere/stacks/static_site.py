@@ -29,7 +29,7 @@ def update(domain, region="eu-west-2", subdomain=None):
     client = boto3.client("cloudformation", region_name=region)
 
     try:
-        response = client.describe_stacks(
+        client.describe_stacks(
             StackName=stack_name,
         )
     except botocore.exceptions.ClientError:
@@ -43,7 +43,7 @@ def update(domain, region="eu-west-2", subdomain=None):
         )
         waiter = client.get_waiter("stack_create_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(
+        client.describe_stacks(
             StackName=stack_name,
         )
 
@@ -58,7 +58,7 @@ def update(domain, region="eu-west-2", subdomain=None):
         )
         waiter = client.get_waiter("stack_update_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(
+        client.describe_stacks(
             StackName=stack_name,
         )
     except Exception as e:
@@ -111,7 +111,7 @@ def make(subdomain=None):
     hostedzone = t.add_parameter(
         Parameter(
             "HostedZoneName",
-            Description="The DNS name of an existing Amazon Route 53 hosted zone",
+            Description="The DNS name of an existing Route 53 hosted zone",
             Type="String",
         )
     )
@@ -129,7 +129,7 @@ def make(subdomain=None):
             )
         )
 
-        record = t.add_resource(
+        t.add_resource(
             RecordSetGroup(
                 "RecordSetGroup",
                 HostedZoneName=Join("", [Ref(hostedzone), "."]),
@@ -166,7 +166,7 @@ def make(subdomain=None):
                 ),
             )
         )
-        www_bucket = t.add_resource(
+        t.add_resource(
             Bucket(
                 "WWWBucket",
                 BucketName=Join(".", ["www", Ref(hostedzone)]),
@@ -179,7 +179,7 @@ def make(subdomain=None):
             )
         )
 
-        record = t.add_resource(
+        t.add_resource(
             RecordSetGroup(
                 "RecordSetGroup",
                 HostedZoneName=Join("", [Ref(hostedzone), "."]),
