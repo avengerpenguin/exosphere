@@ -10,5 +10,5 @@ def main():
     clize.run([stacks.staticsite, stacks.staticsitewithemail])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
