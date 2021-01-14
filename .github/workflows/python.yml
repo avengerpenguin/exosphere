@@ -31,7 +31,7 @@ jobs:
       run: echo "::set-output name=Exosphere-$(python setup.py --version)"
     - name: Lint
       run: |
-        black -l 79 --check --diff exosphere
+        black -l 79 --check --diff --exclude _version.py exosphere
         pylama --ignore E501,W503 exosphere
     - name: Test
       run: |
