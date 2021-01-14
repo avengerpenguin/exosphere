@@ -48,5 +48,4 @@ setup(
             "exosphere = exosphere.cli:main",
         ],
     },
-    cmdclass={"test": Tox},
 )
