@@ -29,7 +29,7 @@ jobs:
     - name: Install build tools
       run: |
         python -m pip install --upgrade pip
-        pip install -U black pylama wheel pip
+        pip install -U black pylama wheel pip pytest
         pip install .
     - name: Set build name
       run: echo "::set-output name=Exosphere-$(python setup.py --version)"
