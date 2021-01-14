@@ -4,29 +4,19 @@ import sys
 
 import boto3
 import botocore
-from troposphere import (
-    FindInMap,
-    GetAtt,
-    Join,
-    Output,
-    Parameter,
-    Ref,
-    Template,
-)
-from troposphere.route53 import (
-    AliasTarget,
-    HostedZone,
-    RecordSet,
-    RecordSetGroup,
-    RecordSetType,
-)
-from troposphere.s3 import (
-    Bucket,
-    BucketOwnerFullControl,
-    PublicRead,
-    RedirectAllRequestsTo,
-    WebsiteConfiguration,
-)
+from troposphere import FindInMap
+from troposphere import Join
+from troposphere import Parameter
+from troposphere import Ref
+from troposphere import Template
+from troposphere.route53 import AliasTarget
+from troposphere.route53 import HostedZone
+from troposphere.route53 import RecordSet
+from troposphere.route53 import RecordSetGroup
+from troposphere.s3 import Bucket
+from troposphere.s3 import PublicRead
+from troposphere.s3 import RedirectAllRequestsTo
+from troposphere.s3 import WebsiteConfiguration
 
 
 def update(domain, region="eu-west-2", subdomain=None):
@@ -39,7 +29,9 @@ def update(domain, region="eu-west-2", subdomain=None):
     client = boto3.client("cloudformation", region_name=region)
 
     try:
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(
+            StackName=stack_name,
+        )
     except botocore.exceptions.ClientError:
         client.create_stack(
             StackName=stack_name,
@@ -47,11 +39,13 @@ def update(domain, region="eu-west-2", subdomain=None):
             Parameters=[
                 {"ParameterKey": "HostedZoneName", "ParameterValue": domain},
             ],
-            Capabilities=["CAPABILITY_IAM",],
+            Capabilities=["CAPABILITY_IAM"],
         )
         waiter = client.get_waiter("stack_create_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(
+            StackName=stack_name,
+        )
 
     try:
         client.update_stack(
@@ -60,11 +54,13 @@ def update(domain, region="eu-west-2", subdomain=None):
             Parameters=[
                 {"ParameterKey": "HostedZoneName", "ParameterValue": domain},
             ],
-            Capabilities=["CAPABILITY_IAM",],
+            Capabilities=["CAPABILITY_IAM"],
         )
         waiter = client.get_waiter("stack_update_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(
+            StackName=stack_name,
+        )
     except Exception as e:
         print(e, file=sys.stderr)
 
@@ -127,7 +123,8 @@ def make(subdomain=None):
                 BucketName=Join(".", [subdomain, Ref(hostedzone)]),
                 AccessControl=PublicRead,
                 WebsiteConfiguration=WebsiteConfiguration(
-                    IndexDocument="index.html", ErrorDocument="error.html",
+                    IndexDocument="index.html",
+                    ErrorDocument="error.html",
                 ),
             )
         )
@@ -164,7 +161,8 @@ def make(subdomain=None):
                 BucketName=Ref(hostedzone),
                 AccessControl=PublicRead,
                 WebsiteConfiguration=WebsiteConfiguration(
-                    IndexDocument="index.html", ErrorDocument="error.html",
+                    IndexDocument="index.html",
+                    ErrorDocument="error.html",
                 ),
             )
         )

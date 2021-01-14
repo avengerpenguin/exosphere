@@ -22,7 +22,7 @@ jobs:
         pip install -U black pylama wheel pip
     - name: Lint
       run: |
-        black --check --diff exosphere
+        black -l 79 --check --diff exosphere
         pylama --ignore E501,W503 exosphere
     - name: Test
       run: |

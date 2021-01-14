@@ -3,18 +3,16 @@ import sys
 import boto3
 import botocore
 from awacs import aws
+from troposphere import GetAtt
+from troposphere import Join
+from troposphere import Output
+from troposphere import Parameter
+from troposphere import Ref
+from troposphere import awslambda
+from troposphere import iam
+from troposphere import s3
+
 from exosphere.stacks import static_site
-from troposphere import (
-    Condition,
-    GetAtt,
-    Join,
-    Output,
-    Parameter,
-    Ref,
-    awslambda,
-    iam,
-    s3,
-)
 
 
 def make():
@@ -159,7 +157,7 @@ def handler(event, context):
                     aws.Statement(
                         Effect="Allow",
                         Principal=aws.Principal(
-                            "Service", resources="ses.amazonaws.com",
+                            "Service", resources="ses.amazonaws.com"
                         ),
                         Action=[aws.Action("s3", action="PutObject")],
                         Resource=[
@@ -183,7 +181,7 @@ def handler(event, context):
                     aws.Statement(
                         Effect="Allow",
                         Principal=aws.Principal(
-                            "Service", resources="lambda.amazonaws.com",
+                            "Service", resources="lambda.amazonaws.com"
                         ),
                         Action=[aws.Action("sts", action="AssumeRole")],
                     )
@@ -235,7 +233,7 @@ def handler(event, context):
                         Statement=[
                             aws.Statement(
                                 Effect="Allow",
-                                Action=[aws.Action("s3", action="GetObject"),],
+                                Action=[aws.Action("s3", action="GetObject")],
                                 Resource=[
                                     Join(
                                         "",
@@ -275,9 +273,7 @@ def handler(event, context):
         )
     )
     t.add_output(
-        Output(
-            "SESACMToAddresses", Value=Join(",", Ref(forwarding_addresses)),
-        )
+        Output("SESACMToAddresses", Value=Join(",", Ref(forwarding_addresses)))
     )
 
     return t
@@ -291,7 +287,7 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
     client = boto3.client("cloudformation", region_name=region)
 
     try:
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(StackName=stack_name)
     except botocore.exceptions.ClientError:
         client.create_stack(
             StackName=stack_name,
@@ -307,11 +303,11 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
                     "ParameterValue": forwarding_addresses,
                 },
             ],
-            Capabilities=["CAPABILITY_IAM",],
+            Capabilities=["CAPABILITY_IAM"],
         )
         waiter = client.get_waiter("stack_create_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(StackName=stack_name)
 
     try:
         client.update_stack(
@@ -328,10 +324,10 @@ def update(domain, from_address, forwarding_addresses, region="eu-west-2"):
                     "ParameterValue": forwarding_addresses,
                 },
             ],
-            Capabilities=["CAPABILITY_IAM",],
+            Capabilities=["CAPABILITY_IAM"],
         )
         waiter = client.get_waiter("stack_update_complete")
         waiter.wait(StackName=stack_name)
-        response = client.describe_stacks(StackName=stack_name,)
+        response = client.describe_stacks(StackName=stack_name)
     except Exception as e:
         print(e, file=sys.stderr)

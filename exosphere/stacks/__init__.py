@@ -1,4 +1,5 @@
-from exosphere.stacks import static_site, static_site_with_email
+from exosphere.stacks import static_site
+from exosphere.stacks import static_site_with_email
 
 
 def staticsite(domain, region="eu-west-2", subdomain=None):
