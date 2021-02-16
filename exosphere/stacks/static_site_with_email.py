@@ -3,14 +3,16 @@ import sys
 import boto3
 import botocore
 from awacs import aws
-from troposphere import GetAtt
-from troposphere import Join
-from troposphere import Output
-from troposphere import Parameter
-from troposphere import Ref
-from troposphere import awslambda
-from troposphere import iam
-from troposphere import s3
+from troposphere import (
+    GetAtt,
+    Join,
+    Output,
+    Parameter,
+    Ref,
+    awslambda,
+    iam,
+    s3,
+)
 
 from exosphere.stacks import static_site
 
