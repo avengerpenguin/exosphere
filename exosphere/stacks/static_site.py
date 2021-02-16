@@ -2,19 +2,19 @@ import sys
 
 import boto3
 import botocore
-from troposphere import FindInMap
-from troposphere import Join
-from troposphere import Parameter
-from troposphere import Ref
-from troposphere import Template
-from troposphere.route53 import AliasTarget
-from troposphere.route53 import HostedZone
-from troposphere.route53 import RecordSet
-from troposphere.route53 import RecordSetGroup
-from troposphere.s3 import Bucket
-from troposphere.s3 import PublicRead
-from troposphere.s3 import RedirectAllRequestsTo
-from troposphere.s3 import WebsiteConfiguration
+from troposphere import FindInMap, Join, Parameter, Ref, Template
+from troposphere.route53 import (
+    AliasTarget,
+    HostedZone,
+    RecordSet,
+    RecordSetGroup,
+)
+from troposphere.s3 import (
+    Bucket,
+    PublicRead,
+    RedirectAllRequestsTo,
+    WebsiteConfiguration,
+)
 
 
 def update(domain, region="eu-west-2", subdomain=None):
