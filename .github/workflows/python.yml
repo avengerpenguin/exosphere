@@ -12,10 +12,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Get history and tags for SCM versioning to work
-      run: |
-        git fetch --prune --unshallow
-        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -32,7 +28,7 @@ jobs:
         pip install -U black pylama wheel pip tox
         pip install .
     - name: Set build name
-      run: echo "::set-output name=Exosphere-$(python setup.py --version)"
+      run: echo "::set-output name=${GITHUB_REPOSITORY}-$(python setup.py --version)"
     - name: Lint
       run: |
     - name: Run Tox
