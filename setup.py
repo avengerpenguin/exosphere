@@ -8,11 +8,11 @@ class Tox(TestCommand):
     user_options = [("tox-args=", "a", "Arguments to pass to tox")]
 
     def initialize_options(self):
-        TestCommand.initialize_options(self)
+        super().initialize_options()
         self.tox_args = None
 
     def finalize_options(self):
-        TestCommand.finalize_options(self)
+        super().finalize_options()
         self.test_args = []
         self.test_suite = True
 
