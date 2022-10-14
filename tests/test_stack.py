@@ -3,6 +3,7 @@ from urllib.parse import parse_qs
 
 import httpretty
 import pytest
+import testypie
 
 
 @pytest.fixture(autouse=True, scope="function")
