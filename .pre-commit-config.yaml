@@ -44,3 +44,5 @@ repos:
       - id: python-no-eval
       - id: python-no-log-warn
       - id: rst-backticks
+default_language_version:
+  python: python3.11
